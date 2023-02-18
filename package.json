@@ -1,24 +1,19 @@
 {
   "name": "android-tv",
-  "version": "1.0.0",
-  "api_version": "1.0.0",
-  "keywords": [
-    "TV"
-  ],
-  "manufacturer": "Google",
-  "product": "androidtv",
-  "shortname": "androidtv",
-  "description": "Android TV plugin for Companion",
+  "version": "2.0.0",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Brent Zerbe <zerbzman@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "@companion-module/base": "~1.1.1",
     "androidtv-remote": "^1.0.10",
     "bonjour": "^3.5.0",
     "macfromip": "^1.1.1",
     "wake_on_lan": "^1.0.0"
+  },
+  "devDependencies": {
+    "@companion-module/tools": "^1.0.0"
   }
 }

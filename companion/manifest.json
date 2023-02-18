@@ -1,0 +1,26 @@
+{
+	"id": "companion-module-android-tv",
+	"name": "androidtv",
+	"shortname": "androidtv",
+	"description": "Android TV plugin for Companion",
+	"version": "2.0.0",
+	"license": "MIT",
+	"repository": "git+https://github.com/bitfocus/companion-module-android-tv.git",
+	"bugs": "https://github.com/bitfocus/companion-module-android-tv/issues",
+	"maintainers": [
+		{
+			"name": "Brent Zerbe",
+			"email": "zerbzman@gmail.com"
+		}
+	],
+	"runtime": {
+		"type": "node18",
+		"api": "nodejs-ipc",
+		"apiVersion": "0.0.0",
+		"entrypoint": "../main.js"
+	},
+	"legacyIds": [],
+	"manufacturer": "Google",
+	"products": ["androidtv"],
+	"keywords": ["TV"]
+}

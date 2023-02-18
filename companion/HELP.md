@@ -13,7 +13,7 @@ For this to turn on the tv you need to turn on Networked Standby.
 
 TV Connection
 - Ethernet - Works
-- Wifi - Works but not heavily tested
+- Wifi - Seems to work just fine
 
 ## Usage
 
@@ -43,7 +43,7 @@ This module supports:
 ## Troubleshooting
  * TV won't turn on
    - Make sure that you turned on Networked Standby
-   - Make sure that the Mac Address of the TV is in the config.
+   - Make sure that the Mac Address of the TV is in the config. This should happen automatically if you connect to the TV when the TV is turned on.
    - You might have to hit the button again. This is something that I am trying to make more reliable.
    - I had issues when I turned On Developer Settings.
    - Depending on your tv, there might be other options that you can turn on that don't let the TV turn completely off.
