@@ -106,7 +106,7 @@ class ModuleInstance extends InstanceBase {
 					this.updateStatus('unknown_warning', 'Unpaired')
 					this.log('error', 'Unpaired error')
 					// this.config.certBool = false
-					this.saveConfig({ certificate: undefined, host: host, certBool: false, macAddress: this.config.macAddress})
+					this.saveConfig({ certificate: undefined, host: host, bonjour_host: this.config.bonjour_host, certBool: false, macAddress: this.config.macAddress})
 				})
 
 				this.tv.on('ready', async () => {
@@ -135,7 +135,7 @@ class ModuleInstance extends InstanceBase {
 					// this.config.certBool = true
 
 					this.updateStatus('ok')
-					this.saveConfig({ certificate: this.tv.getCertificate(), host: host, certBool: true, macAddress: this.config.macAddress})
+					this.saveConfig({ certificate: this.tv.getCertificate(), host: host, bonjour_host: this.config.bonjour_host, certBool: true, macAddress: this.config.macAddress})
 				})
 
 				if (this.config.certificate !== undefined && this.config.certificate.key !== undefined) {
