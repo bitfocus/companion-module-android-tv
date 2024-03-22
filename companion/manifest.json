@@ -3,7 +3,7 @@
 	"name": "androidtv",
 	"shortname": "androidtv",
 	"description": "Android TV plugin for Companion",
-	"version": "2.0.3",
+	"version": "0.0.0",
 	"license": "MIT",
 	"repository": "git+https://github.com/bitfocus/companion-module-android-tv.git",
 	"bugs": "https://github.com/bitfocus/companion-module-android-tv/issues",
@@ -22,5 +22,11 @@
 	"legacyIds": [],
 	"manufacturer": "Google",
 	"products": ["androidtv"],
-	"keywords": ["TV"]
+	"keywords": ["TV"],
+	"bonjourQueries": {
+		"bonjour_host": {
+			"type": "androidtvremote2",
+			"protocol": "tcp"
+		}
+	}
 }

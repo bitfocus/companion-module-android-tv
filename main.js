@@ -9,7 +9,6 @@ let AndroidRemote, RemoteKeyCode, RemoteDirection
 
 // const wol = require('wake_on_lan')
 const macfromip = require('macfromip')
-const bonjour = require('bonjour')()
 
 class ModuleInstance extends InstanceBase {
 	constructor(internal) {
@@ -19,7 +18,6 @@ class ModuleInstance extends InstanceBase {
 	async init(config) {
 		//'ok', 'connecting', 'disconnected', 'connection_failure', 'bad_config', 'unknown_error', 'unknown_warning'
 		this.config = config
-		this.CHOICES_DEVICES = []
 
 		this.init_tv_connection()
 
@@ -34,7 +32,7 @@ class ModuleInstance extends InstanceBase {
 	init_tv_connection() {
 		this.updateStatus('disconnected')
 
-		if (this.config.host) {
+		if (this.config.host || this.config.bonjour_host) {
 			import('androidtv-remote').then((AndroidTV) => {
 				this.updateStatus('connecting', 'Connecting')
 				console.log('--Starting AndroidTV-Remote--')
@@ -60,8 +58,14 @@ class ModuleInstance extends InstanceBase {
 					options.cert = {}
 				}
 
+				let host = this.config.bonjour_host ?? this.config.host
+
+				if (host.includes(":")) {
+					host = host.split(":").shift()
+				}
+
 				console.log('--Creating tv interface--')
-				this.tv = new AndroidRemote(this.config.host, options)
+				this.tv = new AndroidRemote(host, options)
 				const theTV = this.tv
 
 				console.log('--Setting Variables--')
@@ -102,7 +106,7 @@ class ModuleInstance extends InstanceBase {
 					this.updateStatus('unknown_warning', 'Unpaired')
 					this.log('error', 'Unpaired error')
 					// this.config.certBool = false
-					this.saveConfig({ certificate: undefined, host: this.config.host, certBool: false, macAddress: this.config.macAddress})
+					this.saveConfig({ certificate: undefined, host: host, certBool: false, macAddress: this.config.macAddress})
 				})
 
 				this.tv.on('ready', async () => {
@@ -110,7 +114,7 @@ class ModuleInstance extends InstanceBase {
 
 					if (!this.config.macAddress || this.config.macAddress === '') {
 						try {
-							const host = this.config.host
+							// const host = this.config.host
 
 							this.config.macAddress = await new Promise(function(resolve, reject) {
 								macfromip.getMac(host, function(err, data) {
@@ -131,7 +135,7 @@ class ModuleInstance extends InstanceBase {
 					// this.config.certBool = true
 
 					this.updateStatus('ok')
-					this.saveConfig({ certificate: this.tv.getCertificate(), host: this.config.host, certBool: true, macAddress: this.config.macAddress})
+					this.saveConfig({ certificate: this.tv.getCertificate(), host: host, certBool: true, macAddress: this.config.macAddress})
 				})
 
 				if (this.config.certificate !== undefined && this.config.certificate.key !== undefined) {
@@ -172,14 +176,27 @@ class ModuleInstance extends InstanceBase {
 			`
 			},
 			{
-				type: 'dropdown',
+				type: 'bonjour-device',
+				id: 'bonjour_host',
+				label: 'Automatic Search',
+				width: 6,
+			},
+			{
+				type: 'textinput',
 				id: 'host',
 				label: 'Target IP',
 				width: 6,
-				choices: this.CHOICES_DEVICES,
+				isVisible: (options) => !options['bonjour_host'],
 				default: '',
-				allowCustom: true,
 				regex: Regex.IP
+			},
+			{
+				type: 'static-text',
+				id: 'host-filler',
+				width: 6,
+				label: '',
+				isVisible: (options) => !!options['bonjour_host'],
+				value: '',
 			},
 			{
 				type: 'textinput',
@@ -197,40 +214,6 @@ class ModuleInstance extends InstanceBase {
 				tooltip: 'Uncheck and hit save button to clear saved credentials.'
 			}
 		]
-	}
-
-	searchForTVs() {
-		let self = this
-		return new Promise((resolve, reject) => {
-			const port = 6466
-			const serviceType = `androidtvremote2`
-
-			try {
-				self.log('info', 'Searching for Devices.')
-			} catch (e) {
-				console.log("Logging isn't working!", e)
-			}
-
-			const browser = bonjour.find({ type: serviceType }, function(service) {
-				self.CHOICES_DEVICES.push({
-					id: service.addresses[0],
-					label: `${service.name} - ${service.addresses[0]}`
-				})
-			})
-			// Search for tvs again just in case
-			setTimeout(() => {
-				browser.update()
-				self.log('info', 'Searching for Devices a second time.')
-
-				setTimeout(() => {
-					browser.stop()
-					bonjour.destroy()
-					self.log('info', 'Searching for Devices a third time.')
-					resolve()
-				}, 10000)
-				resolve()
-			}, 10000)
-		})
 	}
 
 	updateActions() {
