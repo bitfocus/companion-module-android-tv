@@ -4,27 +4,40 @@
 > Make sure you pair the device first!
 
 ## TV Setup
-
 For this to turn on the tv you need to turn on Networked Standby.
-   1. Hit the Settings Cog Button on your remote.
-   2. Go to More Settings
-   3. Select Network & Internet
-   4. Scroll down to Networked Standby and turn it on.
+1. Hit the **Settings Cog** Button on your remote.
+2. Go to **More Settings**
+3. Select **Network & Internet**
+4. Scroll down to **Networked Standby** and turn it on.
 
 TV Connection
 - Ethernet - Works
 - Wifi - Seems to work just fine
 
-## Usage
 
-Create a pair action and launch that action.
-When connection is successful it will display a PIN number on the device.
-Create an Enter Pin action and fill in the pin code, run the action.
+## Companion Setup
+1. Select the dropdown **Automatic Search** to find compatible Android TVs on your local network.
+	1. Select **Manual** and enter the IP address manually if not found. **Device must be turned on and on the same network for Automatic Search to work.**
+2. Hit the **Save** button.
+
+## Pairing
+1. Create a pair action and launch that action.
+	- There are Preset buttons to aid with this.
+		1. Go to **Buttons**
+		2. Select the **Presets** tab
+		3. Select **Google:androidtv**
+		4. Select **Pairing**
+		5. Click and Drag **Pair** and **Send Pin** onto the controller.
+		6. Launch the **Pair** button from the controller.
+2. When connection is successful it will display a PIN number on the device.
+3. Create an **Enter Pin** action and fill in the pin code, run the action.
+	1. Select the **Send Pin** button created before from the controller.
+	2. Enter the pin displayed on the TV.
+	3. Launch the **Send Pin** button from the controller.
 
 It should be paired now (you can see it on the device).
 
 This module supports:
-
 * Pairing the device
 * Power on/off
 <!-- * Changing the input -->
@@ -43,8 +56,8 @@ This module supports:
 ## Troubleshooting
  * TV won't turn on
    - Make sure that you turned on Networked Standby
-   - Make sure that the Mac Address of the TV is in the config. This should happen automatically if you connect to the TV when the TV is turned on.
-   - You might have to hit the button again. This is something that I am trying to make more reliable.
+   - Make sure that the Mac Address of the TV is in the config. This should happen automatically if when you pair to the TV and the TV is turned on.
+   - You might have to hit the ON button again. This is something that I am trying to make more reliable.
    - I had issues when I turned On Developer Settings.
    - Depending on your tv, there might be other options that you can turn on that don't let the TV turn completely off.
    - Report an issue on Github.
@@ -54,4 +67,4 @@ This module supports:
  * Nothing works anymore
    - Try disabling and re-enabling the module
    - Try unpairing and re-pairing the TV.
-		- Uncheck the "Paired" checkbox in the Module Configuration and hit save button to clear saved credentials.
+		- Uncheck the **Paired** checkbox in the Module Configuration and hit save button to clear saved credentials.
