@@ -114,8 +114,6 @@ class ModuleInstance extends InstanceBase {
 
 					if (!this.config.macAddress || this.config.macAddress === '') {
 						try {
-							// const host = this.config.host
-
 							this.config.macAddress = await new Promise(function(resolve, reject) {
 								macfromip.getMac(host, function(err, data) {
 									if (err) {
