@@ -139,14 +139,37 @@ class ModuleInstance extends InstanceBase {
 
 				if (this.config.certificate !== undefined && this.config.certificate.key !== undefined) {
 					console.log('--Starting TV--');
-					this.tv.start().then(result => {
-						if (result === undefined) {
-							this.updateStatus(InstanceStatus.ConnectionFailure, 'Check IP Address')
-							this.log('error', `Unable to Connect to ${this.config.host}.`)
-						} else {
-							this.updateStatus(InstanceStatus.Ok)
-						}
-					})
+					
+					const timeoutDuration = 10000; // Timeout duration in milliseconds
+
+					const timeoutPromise = new Promise((resolve, reject) => {
+						setTimeout(() => {
+							reject(new Error('Operation timed out'));
+						}, timeoutDuration);
+					});
+
+					Promise.race([
+						this.tv.start(),
+						timeoutPromise
+					]).then(result => {
+							
+							if (result === undefined) {
+								this.updateStatus(InstanceStatus.ConnectionFailure, 'Check IP Address')
+								this.log('error', `Unable to Connect to ${this.config.host}.`)
+							} else {
+								this.updateStatus(InstanceStatus.Ok)
+							}
+						}).catch(error => {
+							
+							if (error.message === 'Operation timed out') {
+								this.updateStatus(InstanceStatus.ConnectionFailure, 'Check IP Address. Is device on?')
+								this.log('error', `Unable to Connect to ${this.config.host}.`)
+							} else {
+								this.log('error', error.message)
+								console.error(error);
+							}
+						});
+					
 				} else {
 					this.updateStatus(InstanceStatus.UnknownWarning, 'Unpaired')
 				}
