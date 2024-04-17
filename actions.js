@@ -78,12 +78,16 @@ module.exports = function (self) {
 					}
 					self.log('debug', 'Sending Power Command to TV')
 
+					self.tv.sendPower()
 					wake(macAddress).catch((error) => {
 						self.log('warning', `Error trying to wake up the Device.`)
 						// console.error(error);
 					})
 
 					setTimeout(() => {
+						if (!self.getVariableValue('power_state')) {
+							self.tv.sendPower()
+						}
 						wake(macAddress).catch((error) => {
 							self.log('warning', `Error trying to wake up the Device.`)
 							// console.error(error);
