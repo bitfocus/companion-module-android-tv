@@ -1,5 +1,6 @@
 const wol = require("wake_on_lan");
 const { InstanceStatus } = require('@companion-module/base')
+const { getBroadcastAddressesFromIP, getNetworkInterfacesIPv4 } = require("./subnet-helpers")
 
 module.exports = function (self) {
 
@@ -71,28 +72,49 @@ module.exports = function (self) {
 					// get the macAddress of the tv
 					// If the tv has been connected then the mac address cant be found yet
 					const macAddress = self.config.macAddress
+					const ip = self.config.host
 
 					if (macAddress === "") {
 						self.log('error', 'Unable to turn on the TV without a macAddress. Turn on the TV first then connect to automatically get the macAddress.')
 						return
 					}
 					self.log('debug', 'Sending Power Command to TV')
-
+					
 					self.tv.sendPower()
-					wake(macAddress).catch((error) => {
-						self.log('warning', `Error trying to wake up the Device.`)
-						// console.error(error);
-					})
-
-					setTimeout(() => {
-						if (!self.getVariableValue('power_state')) {
-							self.tv.sendPower()
-						}
-						wake(macAddress).catch((error) => {
+					// Get all the broadcast addresses possible for the TV
+					const addresses = getBroadcastAddressesFromIP(ip, getNetworkInterfacesIPv4())
+					
+					addresses.forEach(address => {
+						self.log('debug', `Sending Wake Command #1`)
+						wake(macAddress, address).catch((error) => {
 							self.log('warning', `Error trying to wake up the Device.`)
 							// console.error(error);
 						})
-					}, 3000)
+	
+						setTimeout(() => {
+							if (!self.getVariableValue('power_state')) {
+								self.tv.sendPower()
+							}
+							self.log('debug', `Sending Wake Command #2`)
+							wake(macAddress, address).catch((error) => {
+								self.log('warning', `Error trying to wake up the Device.`)
+								// console.error(error);
+							})
+						}, 3000)
+
+						setTimeout(() => {
+							if (!self.getVariableValue('power_state')) {
+								self.tv.sendPower()
+							}
+							self.log('debug', `Sending Wake Command #3`)
+							wake(macAddress, address).catch((error) => {
+								self.log('warning', `Error trying to wake up the Device.`)
+								// console.error(error);
+							})
+						}, 6000)
+					});
+
+					
 				}
 			},
 		},
@@ -488,16 +510,19 @@ module.exports = function (self) {
 			},
 		},
 	})
+
+	function wake(mac, broadcastAddress) {
+		return new Promise(function(resolve, reject) {
+			self.log('debug', `Waking ${mac} with broadcast of ${broadcastAddress}`);
+			wol.wake(mac, { address: broadcastAddress }, function(error) {
+				if (error) {
+					reject(error)
+				} else {
+					resolve('done')
+				}
+			})
+		})
+	}
 }
 
-function wake(mac) {
-	return new Promise(function(resolve, reject) {
-		wol.wake(mac, function(error) {
-			if (error) {
-				reject(error)
-			} else {
-				resolve('done')
-			}
-		})
-	})
-}
+
