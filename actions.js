@@ -1,14 +1,30 @@
 const wol = require("wake_on_lan");
+const { InstanceStatus } = require('@companion-module/base')
 
 module.exports = function (self) {
 
 	self.setActionDefinitions({
 		pair: {
 			name: 'Pair Device',
-			options: [],
+			options: [
+				{
+					type: 'static-text',
+					id: 'info',
+					label: 'Information',
+					width: 12,
+					value: 'Check Log or Pairing instructions if TV does not immediately show pairing code. Log will take a minute to show.'
+				},
+			],
 			callback: async (event) => {
 				try {
-					self.tv.start()
+					self.tv.start().then(result => {
+						if (result === undefined) {
+							self.updateStatus(InstanceStatus.ConnectionFailure, 'Check IP Address')
+							self.log('error', `Unable to Connect to ${self.config.host}.`)
+						} else {
+							self.updateStatus(InstanceStatus.Ok)
+						}
+					})
 					self.log('info', `Attempting to pair`)
 				} catch (error) {
 					self.log('debug', `Error: ${error}`)
@@ -62,12 +78,16 @@ module.exports = function (self) {
 					}
 					self.log('debug', 'Sending Power Command to TV')
 
+					self.tv.sendPower()
 					wake(macAddress).catch((error) => {
 						self.log('warning', `Error trying to wake up the Device.`)
 						// console.error(error);
 					})
 
 					setTimeout(() => {
+						if (!self.getVariableValue('power_state')) {
+							self.tv.sendPower()
+						}
 						wake(macAddress).catch((error) => {
 							self.log('warning', `Error trying to wake up the Device.`)
 							// console.error(error);
