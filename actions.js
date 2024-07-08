@@ -68,17 +68,27 @@ module.exports = function (self) {
 					const addresses = getBroadcastAddressesFromIP(ip, getNetworkInterfacesIPv4())
 					
 					addresses.forEach(address => {
+						self.log('debug', `Sending Wake Command #1`)
 						wake(macAddress, address).catch((error) => {
 							self.log('warning', `Error trying to wake up the Device.`)
 							// console.error(error);
 						})
 	
 						setTimeout(() => {
+							self.log('debug', `Sending Wake Command #2`)
 							wake(macAddress, address).catch((error) => {
 								self.log('warning', `Error trying to wake up the Device.`)
 								// console.error(error);
 							})
 						}, 3000)
+
+						setTimeout(() => {
+							self.log('debug', `Sending Wake Command #3`)
+							wake(macAddress, address).catch((error) => {
+								self.log('warning', `Error trying to wake up the Device.`)
+								// console.error(error);
+							})
+						}, 6000)
 					});
 
 					
