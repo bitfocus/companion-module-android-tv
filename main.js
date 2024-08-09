@@ -75,6 +75,7 @@ class ModuleInstance extends InstanceBase {
 					this.setVariableValues({
 						power_state: powered
 					})
+					this.updateStatus(InstanceStatus.Ok)
 					this.checkFeedbacks('PowerState')
 				})
 
@@ -107,7 +108,14 @@ class ModuleInstance extends InstanceBase {
 					this.updateStatus(InstanceStatus.UnknownWarning, 'Unpaired')
 					this.log('error', 'Unpaired error')
 					// this.config.certBool = false
-					this.saveConfig({ certificate: undefined, host: host, bonjour_host: this.config.bonjour_host, certBool: false, macAddress: this.config.macAddress})
+					this.saveConfig({
+						certificate: undefined,
+						host: host,
+						bonjour_host: this.config.bonjour_host,
+						certBool: false,
+						macAddress: this.config.macAddress,
+						retryDuration: this.config.retryDuration
+					})
 				})
 
 				this.tv.on('ready', async () => {
@@ -134,7 +142,14 @@ class ModuleInstance extends InstanceBase {
 					// this.config.certBool = true
 
 					this.updateStatus(InstanceStatus.Ok)
-					this.saveConfig({ certificate: this.tv.getCertificate(), host: host, bonjour_host: this.config.bonjour_host, certBool: true, macAddress: this.config.macAddress})
+					this.saveConfig({
+						certificate: this.tv.getCertificate(),
+						host: host,
+						bonjour_host: this.config.bonjour_host,
+						certBool: true,
+						macAddress: this.config.macAddress,
+						retryDuration: this.config.retryDuration
+					})
 				})
 
 				if (this.config.certificate !== undefined && this.config.certificate.key !== undefined) {
@@ -159,12 +174,20 @@ class ModuleInstance extends InstanceBase {
 							} else {
 								this.updateStatus(InstanceStatus.Ok)
 							}
+
+							this.tv.remoteManager.on('error', (error) => {
+								console.error('RemoteManager Error')
+								this.updateStatus(InstanceStatus.UnknownError, 'Check Log')
+								console.error(JSON.stringify(error));
+							})
 						}).catch(error => {
 							
 							if (error.message === 'Operation timed out') {
 								this.updateStatus(InstanceStatus.ConnectionFailure, 'Check IP Address. Is device on?')
 								this.log('error', `Unable to Connect to ${this.config.host}.`)
 							} else {
+								console.log('starting error', error)
+								
 								this.log('error', error.message)
 								console.error(error);
 							}
@@ -239,8 +262,19 @@ class ModuleInstance extends InstanceBase {
 				type: 'checkbox',
 				label: 'Paired',
 				id: 'certBool',
+				width: 6,
 				default: false,
 				tooltip: 'Uncheck and hit save button to clear saved credentials.'
+			},
+			{
+				type: 'number',
+				label: 'Power On Retry Duration (in seconds)',
+				id: 'retryDuration',
+				width: 6,
+				default: 6,
+				min: 0,
+				max: 60,
+				tooltip: 'Take up to X seconds trying to power the TV on ethernet connections.'
 			}
 		]
 	}
