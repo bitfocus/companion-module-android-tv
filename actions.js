@@ -18,14 +18,13 @@ module.exports = function (self) {
 			],
 			callback: async (event) => {
 				try {
-					self.tv.start().then(result => {
-						if (result === undefined) {
-							self.updateStatus(InstanceStatus.ConnectionFailure, 'Check IP Address')
-							self.log('error', `Unable to Connect to ${self.config.host}.`)
-						} else {
-							self.updateStatus(InstanceStatus.Ok)
-						}
-					})
+					const result = await self.tv.start()
+					if (result === undefined) {
+						self.updateStatus(InstanceStatus.ConnectionFailure, 'Check IP Address')
+						self.log('error', `Unable to Connect to ${self.config.host}.`)
+					} else {
+						self.updateStatus(InstanceStatus.Ok)
+					}
 					self.log('info', `Attempting to pair`)
 				} catch (error) {
 					self.log('debug', `Error: ${error}`)
@@ -65,7 +64,7 @@ module.exports = function (self) {
 					choices: [{ label: 'power on', id: 'power_on' }, { label: 'power off', id: 'power_off' }]
 				},
 			],
-			callback: async (event) => {
+			callback: (event) => {
 				if (event.options.power === 'power_off') {
 					self.tv.sendPower()
 				} else if (event.options.power === 'power_on') {
@@ -80,38 +79,64 @@ module.exports = function (self) {
 					}
 					self.log('debug', 'Sending Power Command to TV')
 					
-					self.tv.sendPower()
+					if (!self.getVariableValue('power_state')) {
+						self.tv.sendPower()
+					}
 					// Get all the broadcast addresses possible for the TV
 					const addresses = getBroadcastAddressesFromIP(ip, getNetworkInterfacesIPv4())
+
+					const retryInterval = 3
+
+					const retryDuration = self.config.retryDuration ?? 6
+
+					const maxRetries = Math.ceil(retryDuration / retryInterval)
 					
 					addresses.forEach(address => {
 						self.log('debug', `Sending Wake Command #1`)
+						
 						wake(macAddress, address).catch((error) => {
 							self.log('warning', `Error trying to wake up the Device.`)
 							// console.error(error);
 						})
-	
-						setTimeout(() => {
-							if (!self.getVariableValue('power_state')) {
-								self.tv.sendPower()
-							}
-							self.log('debug', `Sending Wake Command #2`)
-							wake(macAddress, address).catch((error) => {
-								self.log('warning', `Error trying to wake up the Device.`)
-								// console.error(error);
-							})
-						}, 3000)
 
-						setTimeout(() => {
-							if (!self.getVariableValue('power_state')) {
-								self.tv.sendPower()
-							}
-							self.log('debug', `Sending Wake Command #3`)
-							wake(macAddress, address).catch((error) => {
-								self.log('warning', `Error trying to wake up the Device.`)
-								// console.error(error);
+						// check to see if the main system is still connected.
+						if (self.tv.remoteManager.client.readyState === 'closed') {
+							// retry the connection
+							self.tv.remoteManager.start().catch(error => {
+								self.log('warning', `Error trying to reconnect.`)
+								console.log('error', error)
+								
 							})
-						}, 6000)
+							self.updateStatus(InstanceStatus.UnknownWarning, 'Reconnecting')
+						}
+
+						let retryCount = 0
+
+						const retryLoop = setInterval(() => {
+								if (!self.getVariableValue('power_state')) {
+									self.tv.sendPower()
+								}
+								self.log('debug', `Sending Wake Command #${retryCount + 2}`)
+								wake(macAddress, address).catch((error) => {
+									self.log('warning', `Error trying to wake up the Device.`)
+									// console.error(error);
+								})
+								// check to see if the main system is still connected.
+								if (self.tv.remoteManager.client.readyState === 'closed') {
+									// retry the connection
+									self.tv.remoteManager.start().catch(error => {
+										self.log('warning', `Error trying to reconnect.`)
+										console.log('error', error)
+										
+									})
+									self.updateStatus(InstanceStatus.UnknownWarning, 'Reconnecting')
+								}
+
+								retryCount++;
+								if (retryCount >= maxRetries || self.getVariableValue('power_state')) {
+									clearInterval(retryLoop);
+								}
+							}, retryInterval * 1000)
 					});
 
 					
