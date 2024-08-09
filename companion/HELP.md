@@ -8,16 +8,17 @@ For this to turn on the tv you need to turn on Networked Standby.
 1. Hit the **Settings Cog** Button on your remote.
 2. Go to **More Settings**
 3. Select **Network & Internet**
-4. Scroll down to **Networked Standby** and turn it on.
+4. Scroll down to **Networked Standby** and turn it on. *If this option is not available, Google sign in might be required.
 
 TV Connection
-- Ethernet - Works
-- Wifi - Seems to work just fine
+- Ethernet - Can be unreliable when trying to Power ON
+- Wifi - Very reliable in testing
 
 
 ## Companion Setup
 1. Select the dropdown **Automatic Search** to find compatible Android TVs on your local network.
 	1. Select **Manual** and enter the IP address manually if not found. **Device must be turned on and on the same network for Automatic Search to work.**
+	2. **This module only supports IPv4 addresses.**
 2. Hit the **Save** button.
 
 ## Pairing
@@ -53,11 +54,16 @@ This module supports:
     - F8 - Media Player
     - F9 - Google Play
 
+## Going to the Input Screen
+Your mileage may vary with this solution. To go to the input screen from the home screen, create a button in Companion to launch the following button pushes:
+1. KEYCODE_F3 button to bring up the input switcher.
+2. KEYCODE_DPAD_CENTER button to select the last used Input.
+
 ## Troubleshooting
  * TV won't turn on
    - Make sure that you turned on Networked Standby
    - Make sure that the Mac Address of the TV is in the config. This should happen automatically if when you pair to the TV and the TV is turned on.
-   - You might have to hit the ON button again. This is something that I am trying to make more reliable.
+   - You might have to hit the ON button again. When the TV is on an ethernet connection, sometimes it struggles to turn back on. Set the **Retry Duration** option in the module settings to 30 to keep trying to wake the TV. Alternatively, turn on the Wifi connection on the TV and switch to that address for TV control.
    - I had issues when I turned On Developer Settings.
    - Depending on your tv, there might be other options that you can turn on that don't let the TV turn completely off.
    - Report an issue on Github.
