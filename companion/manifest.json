@@ -1,5 +1,5 @@
 {
-	"id": "companion-module-android-tv",
+	"id": "android-tv",
 	"name": "androidtv",
 	"shortname": "androidtv",
 	"description": "Android TV plugin for Companion",
@@ -19,7 +19,7 @@
 		"apiVersion": "0.0.0",
 		"entrypoint": "../main.js"
 	},
-	"legacyIds": [],
+	"legacyIds": ["companion-module-android-tv"],
 	"manufacturer": "Google",
 	"products": ["androidtv"],
 	"keywords": ["TV"],
