@@ -7,7 +7,6 @@ const UpdateVariableDefinitions = require('./variables')
 
 let AndroidRemote, RemoteKeyCode, RemoteDirection
 
-// const wol = require('wake_on_lan')
 const macfromip = require('macfromip')
 
 class ModuleInstance extends InstanceBase {
@@ -274,7 +273,8 @@ class ModuleInstance extends InstanceBase {
 				default: 6,
 				min: 0,
 				max: 60,
-				tooltip: 'Take up to X seconds trying to power the TV on ethernet connections.'
+				tooltip: 'Take up to X seconds trying to power the TV on ethernet connections.',
+				isVisible: () => false, // Hide
 			}
 		]
 	}
