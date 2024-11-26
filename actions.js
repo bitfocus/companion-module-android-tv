@@ -1,14 +1,30 @@
 const wol = require("wake_on_lan");
+const { InstanceStatus } = require('@companion-module/base')
+const { getBroadcastAddressesFromIP, getNetworkInterfacesIPv4 } = require("./subnet-helpers")
 
 module.exports = function (self) {
 
 	self.setActionDefinitions({
 		pair: {
 			name: 'Pair Device',
-			options: [],
+			options: [
+				{
+					type: 'static-text',
+					id: 'info',
+					label: 'Information',
+					width: 12,
+					value: 'Check Log or Pairing instructions if TV does not immediately show pairing code. Log will take a minute to show.'
+				},
+			],
 			callback: async (event) => {
 				try {
-					self.tv.start()
+					const result = await self.tv.start()
+					if (result === undefined) {
+						self.updateStatus(InstanceStatus.ConnectionFailure, 'Check IP Address')
+						self.log('error', `Unable to Connect to ${self.config.host}.`)
+					} else {
+						self.updateStatus(InstanceStatus.Ok)
+					}
 					self.log('info', `Attempting to pair`)
 				} catch (error) {
 					self.log('debug', `Error: ${error}`)
@@ -48,31 +64,82 @@ module.exports = function (self) {
 					choices: [{ label: 'power on', id: 'power_on' }, { label: 'power off', id: 'power_off' }]
 				},
 			],
-			callback: async (event) => {
+			callback: (event) => {
 				if (event.options.power === 'power_off') {
 					self.tv.sendPower()
 				} else if (event.options.power === 'power_on') {
 					// get the macAddress of the tv
 					// If the tv has been connected then the mac address cant be found yet
 					const macAddress = self.config.macAddress
+					const ip = self.config.host
 
 					if (macAddress === "") {
 						self.log('error', 'Unable to turn on the TV without a macAddress. Turn on the TV first then connect to automatically get the macAddress.')
 						return
 					}
 					self.log('debug', 'Sending Power Command to TV')
+					
+					if (!self.getVariableValue('power_state')) {
+						self.tv.sendPower()
+					}
+					// Get all the broadcast addresses possible for the TV
+					const addresses = getBroadcastAddressesFromIP(ip, getNetworkInterfacesIPv4())
 
-					wake(macAddress).catch((error) => {
-						self.log('warning', `Error trying to wake up the Device.`)
-						// console.error(error);
-					})
+					const retryInterval = 3
 
-					setTimeout(() => {
-						wake(macAddress).catch((error) => {
+					const retryDuration = self.config.retryDuration ?? 6
+
+					const maxRetries = Math.ceil(retryDuration / retryInterval)
+					
+					addresses.forEach(address => {
+						self.log('debug', `Sending Wake Command #1`)
+						
+						wake(macAddress, address).catch((error) => {
 							self.log('warning', `Error trying to wake up the Device.`)
 							// console.error(error);
 						})
-					}, 3000)
+
+						// check to see if the main system is still connected.
+						if (self.tv.remoteManager.client.readyState === 'closed') {
+							// retry the connection
+							self.tv.remoteManager.start().catch(error => {
+								self.log('warning', `Error trying to reconnect.`)
+								console.log('error', error)
+								
+							})
+							self.updateStatus(InstanceStatus.UnknownWarning, 'Reconnecting')
+						}
+
+						let retryCount = 0
+
+						const retryLoop = setInterval(() => {
+								if (!self.getVariableValue('power_state')) {
+									self.tv.sendPower()
+								}
+								self.log('debug', `Sending Wake Command #${retryCount + 2}`)
+								wake(macAddress, address).catch((error) => {
+									self.log('warning', `Error trying to wake up the Device.`)
+									// console.error(error);
+								})
+								// check to see if the main system is still connected.
+								if (self.tv.remoteManager.client.readyState === 'closed') {
+									// retry the connection
+									self.tv.remoteManager.start().catch(error => {
+										self.log('warning', `Error trying to reconnect.`)
+										console.log('error', error)
+										
+									})
+									self.updateStatus(InstanceStatus.UnknownWarning, 'Reconnecting')
+								}
+
+								retryCount++;
+								if (retryCount >= maxRetries || self.getVariableValue('power_state')) {
+									clearInterval(retryLoop);
+								}
+							}, retryInterval * 1000)
+					});
+
+					
 				}
 			},
 		},
@@ -468,16 +535,19 @@ module.exports = function (self) {
 			},
 		},
 	})
+
+	function wake(mac, broadcastAddress) {
+		return new Promise(function(resolve, reject) {
+			self.log('debug', `Waking ${mac} with broadcast of ${broadcastAddress}`);
+			wol.wake(mac, { address: broadcastAddress }, function(error) {
+				if (error) {
+					reject(error)
+				} else {
+					resolve('done')
+				}
+			})
+		})
+	}
 }
 
-function wake(mac) {
-	return new Promise(function(resolve, reject) {
-		wol.wake(mac, function(error) {
-			if (error) {
-				reject(error)
-			} else {
-				resolve('done')
-			}
-		})
-	})
-}
+

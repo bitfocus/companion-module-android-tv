@@ -7,7 +7,6 @@ const UpdateVariableDefinitions = require('./variables')
 
 let AndroidRemote, RemoteKeyCode, RemoteDirection
 
-// const wol = require('wake_on_lan')
 const macfromip = require('macfromip')
 
 class ModuleInstance extends InstanceBase {
@@ -16,12 +15,9 @@ class ModuleInstance extends InstanceBase {
 	}
 
 	async init(config) {
-		//'ok', 'connecting', 'disconnected', 'connection_failure', 'bad_config', 'unknown_error', 'unknown_warning'
 		this.config = config
 
 		this.init_tv_connection()
-
-		this.updateStatus(InstanceStatus.Ok)
 
 		this.updateActions() // export actions
 		this.updateFeedbacks() // export feedbacks
@@ -30,7 +26,7 @@ class ModuleInstance extends InstanceBase {
 	}
 
 	init_tv_connection() {
-		this.updateStatus('disconnected')
+		this.updateStatus(InstanceStatus.Disconnected)
 
 		if (this.config.host || this.config.bonjour_host) {
 			import('androidtv-remote').then((AndroidTV) => {
@@ -56,6 +52,7 @@ class ModuleInstance extends InstanceBase {
 
 				if (!this.config.certBool) {
 					options.cert = {}
+					this.config.certificate = {}
 				}
 
 				let host = this.config.bonjour_host ?? this.config.host
@@ -65,8 +62,11 @@ class ModuleInstance extends InstanceBase {
 				}
 
 				console.log('--Creating tv interface--')
+				
 				this.tv = new AndroidRemote(host, options)
 				const theTV = this.tv
+				
+				
 
 				console.log('--Setting Variables--')
 				this.tv.on('powered', (powered) => {
@@ -74,6 +74,7 @@ class ModuleInstance extends InstanceBase {
 					this.setVariableValues({
 						power_state: powered
 					})
+					this.updateStatus(InstanceStatus.Ok)
 					this.checkFeedbacks('PowerState')
 				})
 
@@ -97,16 +98,23 @@ class ModuleInstance extends InstanceBase {
 
 				this.tv.on('error', (error) => {
 					console.error('There was an Error!!!')
-					this.updateStatus('unknown_error')
+					this.updateStatus(InstanceStatus.UnknownError, 'Check Log')
 					this.log('error', 'Network error: ' + error.message)
 				})
 
 				this.tv.on('unpaired', () => {
 					console.error('Unpaired')
-					this.updateStatus('unknown_warning', 'Unpaired')
+					this.updateStatus(InstanceStatus.UnknownWarning, 'Unpaired')
 					this.log('error', 'Unpaired error')
 					// this.config.certBool = false
-					this.saveConfig({ certificate: undefined, host: host, bonjour_host: this.config.bonjour_host, certBool: false, macAddress: this.config.macAddress})
+					this.saveConfig({
+						certificate: undefined,
+						host: host,
+						bonjour_host: this.config.bonjour_host,
+						certBool: false,
+						macAddress: this.config.macAddress,
+						retryDuration: this.config.retryDuration
+					})
 				})
 
 				this.tv.on('ready', async () => {
@@ -132,17 +140,62 @@ class ModuleInstance extends InstanceBase {
 					// this.config.certificate = this.tv.getCertificate()
 					// this.config.certBool = true
 
-					this.updateStatus('ok')
-					this.saveConfig({ certificate: this.tv.getCertificate(), host: host, bonjour_host: this.config.bonjour_host, certBool: true, macAddress: this.config.macAddress})
+					this.updateStatus(InstanceStatus.Ok)
+					this.saveConfig({
+						certificate: this.tv.getCertificate(),
+						host: host,
+						bonjour_host: this.config.bonjour_host,
+						certBool: true,
+						macAddress: this.config.macAddress,
+						retryDuration: this.config.retryDuration
+					})
 				})
 
 				if (this.config.certificate !== undefined && this.config.certificate.key !== undefined) {
-					// console.log('--Starting TV--');
-					this.tv.start()
+					console.log('--Starting TV--');
+					
+					const timeoutDuration = 10000; // Timeout duration in milliseconds
+
+					const timeoutPromise = new Promise((resolve, reject) => {
+						setTimeout(() => {
+							reject(new Error('Operation timed out'));
+						}, timeoutDuration);
+					});
+
+					Promise.race([
+						this.tv.start(),
+						timeoutPromise
+					]).then(result => {
+							
+							if (result === undefined) {
+								this.updateStatus(InstanceStatus.ConnectionFailure, 'Check IP Address')
+								this.log('error', `Unable to Connect to ${this.config.host}.`)
+							} else {
+								this.updateStatus(InstanceStatus.Ok)
+							}
+
+							this.tv.remoteManager.on('error', (error) => {
+								console.error('RemoteManager Error')
+								this.updateStatus(InstanceStatus.UnknownError, 'Check Log')
+								console.error(JSON.stringify(error));
+							})
+						}).catch(error => {
+							
+							if (error.message === 'Operation timed out') {
+								this.updateStatus(InstanceStatus.ConnectionFailure, 'Check IP Address. Is device on?')
+								this.log('error', `Unable to Connect to ${this.config.host}.`)
+							} else {
+								console.log('starting error', error)
+								
+								this.log('error', error.message)
+								console.error(error);
+							}
+						});
+					
+				} else {
+					this.updateStatus(InstanceStatus.UnknownWarning, 'Unpaired')
 				}
 			})
-		} else {
-			this.searchForTVs()
 		}
 	}
 
@@ -157,8 +210,8 @@ class ModuleInstance extends InstanceBase {
 		this.log('debug', 'destroy')
 	}
 
-	async configUpdated(config) {
-		this.config = config
+	configUpdated(config) {
+		this.init(config)
 	}
 
 	// Return config fields for web config
@@ -170,7 +223,7 @@ class ModuleInstance extends InstanceBase {
 				label: 'Information',
 				width: 12,
 				value: `
-				This module will connect to most new AndroidTVs. Click on the question mark for pairing instructions.
+				This module will connect to most new AndroidTVs. Click on the question mark above and to the right for pairing and helpful instructions.
 			`
 			},
 			{
@@ -199,7 +252,7 @@ class ModuleInstance extends InstanceBase {
 			{
 				type: 'textinput',
 				id: 'macAddress',
-				label: 'Target Mac Address (automatically found)',
+				label: 'Target Mac Address (automatically found during pairing)',
 				width: 6,
 				default: '',
 				regex: '/^([0-9a-f]{2}([:.-]{0,1}|$)){6}$/i'
@@ -208,8 +261,20 @@ class ModuleInstance extends InstanceBase {
 				type: 'checkbox',
 				label: 'Paired',
 				id: 'certBool',
+				width: 6,
 				default: false,
 				tooltip: 'Uncheck and hit save button to clear saved credentials.'
+			},
+			{
+				type: 'number',
+				label: 'Power On Retry Duration (in seconds)',
+				id: 'retryDuration',
+				width: 6,
+				default: 6,
+				min: 0,
+				max: 60,
+				tooltip: 'Take up to X seconds trying to power the TV on ethernet connections.',
+				isVisible: () => false, // Hide
 			}
 		]
 	}
