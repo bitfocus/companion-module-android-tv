@@ -151,13 +151,25 @@ module.exports = function (self) {
 					type: 'dropdown',
 					label: 'On/Off',
 					default: 'mute_off',
-					choices: [{ label: 'Mute On', id: 'mute_on' }, { label: 'Mute Off', id: 'mute_off' }]
+					choices: [
+						{ label: 'Mute On', id: 'mute_on' },
+						{ label: 'Mute Off', id: 'mute_off' },
+						{ label: 'Mute Toggle', id: 'mute_toggle' }
+					]
 				},
 			],
 			callback: async (event) => {
+				console.log('self.getVariableValue("volume_muted")', self.getVariableValue("volume_muted"))
+				
 				if (event.options.mute === 'mute_off') {
-					self.tv.sendKey(self.RemoteKeyCode.KEYCODE_MUTE, self.RemoteDirection.SHORT)
+					if (self.getVariableValue('volume_muted')) {
+						self.tv.sendKey(self.RemoteKeyCode.KEYCODE_MUTE, self.RemoteDirection.SHORT)
+					}
 				} else if (event.options.mute === 'mute_on') {
+					if (!self.getVariableValue('volume_muted')) {
+						self.tv.sendKey(self.RemoteKeyCode.KEYCODE_MUTE, self.RemoteDirection.SHORT)
+					}
+				} else if (event.options.mute === 'mute_toggle') {
 					self.tv.sendKey(self.RemoteKeyCode.KEYCODE_MUTE, self.RemoteDirection.SHORT)
 				}
 			},
