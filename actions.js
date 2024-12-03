@@ -61,85 +61,24 @@ module.exports = function (self) {
 					type: 'dropdown',
 					label: 'On/Off',
 					default: 'power_on',
-					choices: [{ label: 'power on', id: 'power_on' }, { label: 'power off', id: 'power_off' }]
+					choices: [
+						{ label: 'power on', id: 'power_on' },
+						{ label: 'power off', id: 'power_off' },
+						{ label: 'power toggle', id: 'power_toggle' }
+					]
 				},
 			],
 			callback: (event) => {
 				if (event.options.power === 'power_off') {
 					self.tv.sendPower()
 				} else if (event.options.power === 'power_on') {
-					// get the macAddress of the tv
-					// If the tv has been connected then the mac address cant be found yet
-					const macAddress = self.config.macAddress
-					const ip = self.config.host
-
-					if (macAddress === "") {
-						self.log('error', 'Unable to turn on the TV without a macAddress. Turn on the TV first then connect to automatically get the macAddress.')
-						return
-					}
-					self.log('debug', 'Sending Power Command to TV')
-					
-					if (!self.getVariableValue('power_state')) {
+					powerOn()
+				} else if (event.options.power === 'power_toggle') {
+					if (self.getVariableValue('power_state')) {
 						self.tv.sendPower()
+					} else {
+						powerOn()
 					}
-					// Get all the broadcast addresses possible for the TV
-					const addresses = getBroadcastAddressesFromIP(ip, getNetworkInterfacesIPv4())
-
-					const retryInterval = 3
-
-					const retryDuration = self.config.retryDuration ?? 6
-
-					const maxRetries = Math.ceil(retryDuration / retryInterval)
-					
-					addresses.forEach(address => {
-						self.log('debug', `Sending Wake Command #1`)
-						
-						wake(macAddress, address).catch((error) => {
-							self.log('warning', `Error trying to wake up the Device.`)
-							// console.error(error);
-						})
-
-						// check to see if the main system is still connected.
-						if (self.tv.remoteManager.client.readyState === 'closed') {
-							// retry the connection
-							self.tv.remoteManager.start().catch(error => {
-								self.log('warning', `Error trying to reconnect.`)
-								console.log('error', error)
-								
-							})
-							self.updateStatus(InstanceStatus.UnknownWarning, 'Reconnecting')
-						}
-
-						let retryCount = 0
-
-						const retryLoop = setInterval(() => {
-								if (!self.getVariableValue('power_state')) {
-									self.tv.sendPower()
-								}
-								self.log('debug', `Sending Wake Command #${retryCount + 2}`)
-								wake(macAddress, address).catch((error) => {
-									self.log('warning', `Error trying to wake up the Device.`)
-									// console.error(error);
-								})
-								// check to see if the main system is still connected.
-								if (self.tv.remoteManager.client.readyState === 'closed') {
-									// retry the connection
-									self.tv.remoteManager.start().catch(error => {
-										self.log('warning', `Error trying to reconnect.`)
-										console.log('error', error)
-										
-									})
-									self.updateStatus(InstanceStatus.UnknownWarning, 'Reconnecting')
-								}
-
-								retryCount++;
-								if (retryCount >= maxRetries || self.getVariableValue('power_state')) {
-									clearInterval(retryLoop);
-								}
-							}, retryInterval * 1000)
-					});
-
-					
 				}
 			},
 		},
@@ -151,13 +90,23 @@ module.exports = function (self) {
 					type: 'dropdown',
 					label: 'On/Off',
 					default: 'mute_off',
-					choices: [{ label: 'Mute On', id: 'mute_on' }, { label: 'Mute Off', id: 'mute_off' }]
+					choices: [
+						{ label: 'Mute On', id: 'mute_on' },
+						{ label: 'Mute Off', id: 'mute_off' },
+						{ label: 'Mute Toggle', id: 'mute_toggle' }
+					]
 				},
 			],
 			callback: async (event) => {
 				if (event.options.mute === 'mute_off') {
-					self.tv.sendKey(self.RemoteKeyCode.KEYCODE_MUTE, self.RemoteDirection.SHORT)
+					if (self.getVariableValue('volume_muted')) {
+						self.tv.sendKey(self.RemoteKeyCode.KEYCODE_MUTE, self.RemoteDirection.SHORT)
+					}
 				} else if (event.options.mute === 'mute_on') {
+					if (!self.getVariableValue('volume_muted')) {
+						self.tv.sendKey(self.RemoteKeyCode.KEYCODE_MUTE, self.RemoteDirection.SHORT)
+					}
+				} else if (event.options.mute === 'mute_toggle') {
 					self.tv.sendKey(self.RemoteKeyCode.KEYCODE_MUTE, self.RemoteDirection.SHORT)
 				}
 			},
@@ -535,6 +484,79 @@ module.exports = function (self) {
 			},
 		},
 	})
+
+	function powerOn() {
+		// get the macAddress of the tv
+		// If the tv has been connected then the mac address cant be found yet
+		const macAddress = self.config.macAddress
+		const ip = self.config.host
+
+		if (macAddress === "") {
+			self.log('error', 'Unable to turn on the TV without a macAddress. Turn on the TV first then connect to automatically get the macAddress.')
+			return
+		}
+		self.log('debug', 'Sending Power Command to TV')
+		
+		if (!self.getVariableValue('power_state')) {
+			self.tv.sendPower()
+		}
+		// Get all the broadcast addresses possible for the TV
+		const addresses = getBroadcastAddressesFromIP(ip, getNetworkInterfacesIPv4())
+
+		const retryInterval = 3
+
+		const retryDuration = self.config.retryDuration ?? 6
+
+		const maxRetries = Math.ceil(retryDuration / retryInterval)
+		
+		addresses.forEach(address => {
+			self.log('debug', `Sending Wake Command #1`)
+			
+			wake(macAddress, address).catch((error) => {
+				self.log('warning', `Error trying to wake up the Device.`)
+				// console.error(error);
+			})
+
+			// check to see if the main system is still connected.
+			if (self.tv.remoteManager.client.readyState === 'closed') {
+				// retry the connection
+				self.tv.remoteManager.start().catch(error => {
+					self.log('warning', `Error trying to reconnect.`)
+					console.log('error', error)
+					
+				})
+				self.updateStatus(InstanceStatus.UnknownWarning, 'Reconnecting')
+			}
+
+			let retryCount = 0
+
+			const retryLoop = setInterval(() => {
+				if (!self.getVariableValue('power_state')) {
+					self.tv.sendPower()
+				}
+				self.log('debug', `Sending Wake Command #${retryCount + 2}`)
+				wake(macAddress, address).catch((error) => {
+					self.log('warning', `Error trying to wake up the Device.`)
+					// console.error(error);
+				})
+				// check to see if the main system is still connected.
+				if (self.tv.remoteManager.client.readyState === 'closed') {
+					// retry the connection
+					self.tv.remoteManager.start().catch(error => {
+						self.log('warning', `Error trying to reconnect.`)
+						console.log('error', error)
+						
+					})
+					self.updateStatus(InstanceStatus.UnknownWarning, 'Reconnecting')
+				}
+
+				retryCount++;
+				if (retryCount >= maxRetries || self.getVariableValue('power_state')) {
+					clearInterval(retryLoop);
+				}
+			}, retryInterval * 1000)
+		});
+	}
 
 	function wake(mac, broadcastAddress) {
 		return new Promise(function(resolve, reject) {
