@@ -168,7 +168,7 @@ class ModuleInstance extends InstanceBase {
 					]).then(result => {
 							
 							if (result === undefined) {
-								this.updateStatus(InstanceStatus.ConnectionFailure, 'Check IP Address or re-pair')
+								this.updateStatus(InstanceStatus.ConnectionFailure, 'Check IP Address or re-pair(See help)')
 								this.log('error', `Unable to Connect to ${this.config.host}.`)
 							} else {
 								this.updateStatus(InstanceStatus.Ok)
