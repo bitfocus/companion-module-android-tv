@@ -255,7 +255,7 @@ class ModuleInstance extends InstanceBase {
 				label: 'Target Mac Address (automatically found during pairing)',
 				width: 6,
 				default: '',
-				regex: '/^([0-9a-f]{2}([:.-]{0,1}|$)){6}$/i'
+				regex: '/^$|^([0-9a-f]{2}([:.-]{0,1}|$)){6}$/'
 			},
 			{
 				type: 'checkbox',
