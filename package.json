@@ -13,7 +13,7 @@
     "wake_on_lan": "^1.0.0"
   },
   "devDependencies": {
-    "@companion-module/tools": "^2.1.0",
+    "@companion-module/tools": "^2.6.1",
     "jest": "^29.7.0"
   }
 }
