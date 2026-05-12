@@ -25,6 +25,26 @@ class ModuleInstance extends InstanceBase {
 		this.updateVariableDefinitions() // export variable definitions
 	}
 
+	/** Stops TLS/remote state so a new AndroidRemote can be created (e.g. after saveConfig re-inits the instance). */
+	disposeTvConnection() {
+		if (this.tv === undefined) {
+			return
+		}
+		try {
+			if (this.tv.remoteManager?.client) {
+				this.tv.remoteManager.client.destroy()
+			}
+		} catch (_e) {
+			// ignore
+		}
+		try {
+			this.tv.stop()
+		} catch (_e) {
+			// ignore (pairing-only instance may have no remote client yet)
+		}
+		this.tv = undefined
+	}
+
 	init_tv_connection() {
 		this.updateStatus(InstanceStatus.Disconnected)
 
@@ -63,8 +83,9 @@ class ModuleInstance extends InstanceBase {
 
 				console.log('--Creating tv interface--')
 				
+				this.disposeTvConnection()
+
 				this.tv = new AndroidRemote(host, options)
-				const theTV = this.tv
 				
 				
 
@@ -99,7 +120,7 @@ class ModuleInstance extends InstanceBase {
 				this.tv.on('error', (error) => {
 					console.error('There was an Error!!!')
 					this.updateStatus(InstanceStatus.UnknownError, 'Check Log')
-					this.log('error', 'Network error: ' + error.message)
+					this.log('error', 'Network error: ' + (error && error.message ? error.message : String(error)))
 				})
 
 				this.tv.on('unpaired', () => {
@@ -132,8 +153,8 @@ class ModuleInstance extends InstanceBase {
 							})
 						} catch (e) {
 							console.error(e)
-							this.debug('Error Getting Mac Address: You might have to enter it manually.', error)
-							this.config.macAddress === ''
+							this.debug('Error Getting Mac Address: You might have to enter it manually.', e)
+							this.config.macAddress = ''
 						}
 					}
 
@@ -201,11 +222,7 @@ class ModuleInstance extends InstanceBase {
 
 	// When module gets deleted or disabled
 	async destroy() {
-		if (this.tv !== undefined) {
-			this.tv.remoteManager.client.destroy()
-			this.tv.stop()
-			this.tv = undefined
-		}
+		this.disposeTvConnection()
 
 		this.log('debug', 'destroy')
 	}
